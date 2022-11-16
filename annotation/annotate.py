@@ -27,7 +27,7 @@ layout = [[btn('Music'), btn('SFX'), btn('Voice')],
           [btn('load'), btn('play'), btn('next'), btn('pause'), btn('stop')],
           [sg.Text('Load media to start', key='-MESSAGE_AREA-')]]
 
-window = sg.Window('Mini Player', layout, element_justification='center', finalize=True, resizable=True)
+window = sg.Window('Mini Player', layout, element_justification='center', finalize=True, resizable=True, return_keyboard_events=True)
 
 window['-VID_OUT-'].expand(True, True)                # type: sg.Element
 
@@ -53,21 +53,31 @@ else:
 # player.vlm_set_loop("death_note", True)
 
 while True:
-    event, values = window.read()       # run with a timeout so that current location can be updated
+    event, values = window.read(timeout=1)       # run with a timeout so that current location can be updated
+    # if event != "__TIMEOUT__":
+    #     print(event, values)
     if event == sg.WIN_CLOSED:
         break
 
-    if event == 'play' or event == 'next':
+    if event == 'play' or event == 'next' or event == "Right:39":
+        if player.is_playing() and player.get_time() // 1000 < player.get_length() * 0.8 // 1000:
+            continue
+
         list_player.stop()
         if len(annotations) == 0:
             continue
 
         for item in annotations:
-            list_player.set_media_list([item])
+            media_list = inst.media_list_new([item])
+            list_player.set_media_list(media_list)
             current_file = item
             break
         annotations = annotations[1:]
         list_player.play()
+        window.Element("next").Update(disabled=True)
+        window.Element("Music").Update(disabled=True)
+        window.Element("SFX").Update(disabled=True)
+        window.Element("Voice").Update(disabled=True)
     if event == 'pause':
         list_player.pause()
     if event == 'stop':
@@ -91,19 +101,46 @@ while True:
                 annotations.append(f"{folder}/{video}")
             # list_player.set_media_list(media_list)
         sg.popup_ok("Tải xong")
-    elif event == "Music" or event == "SFX" or event == "Voice":
+    elif event in ["1", "Music", "2", "SFX", "3", "Voice"]:
+        if event == "1":
+            event = "Music"
+        if event == "2":
+            event = "SFX"
+        if event == "3":
+            event = "Voice"
+
+        if player.is_playing() and player.get_time() // 1000 < player.get_length() * 0.8 // 1000:
+            continue
+
         file_dir, file_path = os.path.split(current_file)
+        list_player.stop()
         os.makedirs(f"{file_dir}/{event}", exist_ok=True)
         os.rename(current_file, f"{file_dir}/{event}/{file_path}")
 
+        if len(annotations) > 0:
+            for item in annotations:
+                media_list = inst.media_list_new([item])
+                list_player.set_media_list(media_list)
+                current_file = item
+                break
+            annotations = annotations[1:]
+            list_player.play()
+            window.Element("next").Update(disabled=True)
+            window.Element("Music").Update(disabled=True)
+            window.Element("SFX").Update(disabled=True)
+            window.Element("Voice").Update(disabled=True)
+
     # update elapsed time if there is a video loaded and the player is playing
     if player.is_playing():
-        title = player.get_title()
-        window['-MESSAGE_AREA-'].update("{} {:02d}:{:02d} / {:02d}:{:02d}".format(title, *divmod(player.get_time()//1000, 60), *divmod(player.get_length()//1000, 60)))
-        # if player.get_time() // 1000 >= player.get_length() // 1000 - 4:
+        window['-MESSAGE_AREA-'].update("{:02d}:{:02d} / {:02d}:{:02d}".format(*divmod(player.get_time()//1000, 60), *divmod(player.get_length()//1000, 60)))
+        if player.get_time() // 1000 > player.get_length() * 0.8 // 1000:
             # stop before 3s
             # list_player.pause()
             # sg.popup_ok("Vui lòng chọn thể loại")
+            window.Element("next").Update(disabled=False)
+            window.Element("Music").Update(disabled=False)
+            window.Element("SFX").Update(disabled=False)
+            window.Element("Voice").Update(disabled=False)
     else:
         window['-MESSAGE_AREA-'].update('Load media to start' if media_list.count() == 0 else 'Ready to play media' )
 
