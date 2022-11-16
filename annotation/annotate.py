@@ -59,6 +59,9 @@ while True:
 
     if event == 'play' or event == 'next':
         list_player.stop()
+        if len(annotations) == 0:
+            continue
+
         for item in annotations:
             list_player.set_media_list([item])
             current_file = item
