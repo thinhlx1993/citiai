@@ -112,3 +112,8 @@ docs/build
 .vscode
 spleeter-feedstock/
 *FAKE_MUSDB_DIR
+/musdb_model/
+/dnr_model/
+/audio_output/
+/outputs/
+/cache/
